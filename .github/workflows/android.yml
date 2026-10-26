@@ -39,9 +39,15 @@ jobs:
         for f in *.apk; do zip "${f%.apk}.zip" "$f"; done
         ls -l
 
+    - name: Upload APK artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: XQDK-apks
+        path: dist/*.zip
+        retention-days: 7
+
     # 仅推送到 main 时发布 Release；PR 构建只做编译验证
     - name: Create Release
-      if: github.event_name == 'push'
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
