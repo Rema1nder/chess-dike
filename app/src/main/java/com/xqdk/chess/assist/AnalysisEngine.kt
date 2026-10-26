@@ -147,7 +147,7 @@ class AnalysisEngine(
 
         // 配置：权重/线程/Hash/多路PV（与对弈 setOptimizedThreads/applyEngineSetting 同口径）
         eng.setOption("EvalFile", "libpikafish.nnue.so")
-        eng.setOption("Threads", Runtime.getRuntime().availableProcessors())
+        eng.setOption("Threads", Runtime.getRuntime().availableProcessors().coerceAtMost(4))
         eng.setOption("Hash", hashMb)
         eng.setOption("MultiPV", maxPv)
         appliedHash = hashMb
@@ -205,7 +205,7 @@ class AnalysisEngine(
         val redGo = try { fen.split(" ")[1] != "b" } catch (e: Exception) { true }
         eng.writeLineToEngine("position fen $fen")
         // 深度制（与对弈默认 "go depth 20" 同款）：算到目标深度自然收束，简单局面秒出
-        eng.writeLineToEngine("go depth $searchDepth")
+        eng.writeLineToEngine("go depth $searchDepth movetime ${if (searchDepth >= 20) 900 else 500}")
 
         // 兜底防呆（对弈制式本无超时）：极端情况下 60s 强制收束
         val deadline = System.currentTimeMillis() + 60000

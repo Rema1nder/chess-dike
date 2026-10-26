@@ -60,7 +60,7 @@ class ScreenAssistService : Service() {
         private const val MIN_FRAME_INTERVAL_MS = 220L
         /** 仅当悬浮窗面板遮挡棋盘（抓帧前需短暂隐藏面板）时才放慢到该间隔，避免频繁闪烁 */
         private const val OVERLAY_FRAME_INTERVAL_MS = 1400L
-        private const val MIN_RECOGNIZE_INTERVAL_MS = 250L
+        private const val MIN_RECOGNIZE_INTERVAL_MS = 300L
         /** 建议成熟阈值：最佳着法连续未变化的时长，超过即视为"定着"（绿箭头） */
         private const val SUGGEST_STABLE_MS = 1200L
         /** 建议渲染节流：info 流（depth/bestmove 变化即推）高频到达时合并悬浮窗重绘——
