@@ -60,7 +60,7 @@ class ScreenAssistService : Service() {
         private const val MIN_FRAME_INTERVAL_MS = 220L
         /** 仅当悬浮窗面板遮挡棋盘（抓帧前需短暂隐藏面板）时才放慢到该间隔，避免频繁闪烁 */
         private const val OVERLAY_FRAME_INTERVAL_MS = 1400L
-        private const val MIN_RECOGNIZE_INTERVAL_MS = 300L
+        private const val MIN_RECOGNIZE_INTERVAL_MS = 250L
         /** 建议成熟阈值：最佳着法连续未变化的时长，超过即视为"定着"（绿箭头） */
         private const val SUGGEST_STABLE_MS = 1200L
         /** 建议渲染节流：info 流（depth/bestmove 变化即推）高频到达时合并悬浮窗重绘——
@@ -226,7 +226,12 @@ class ScreenAssistService : Service() {
     private val history = ArrayDeque<HistoryEntry>()
 
     /** 引擎强度档位（固定深度，与对弈"固定深度"制式一致） */
-    private val strengthLevels = listOf("快速·深度12" to 12, "标准·深度20" to 20, "强劲·深度24" to 24)
+    private val strengthLevels = listOf(
+        "快速·深度12" to 12,
+        "均衡·深度16" to 16,
+        "标准·深度20" to 20,
+        "强劲·深度24" to 24,
+    )
     private var strengthIndex = 0
     /** 引擎 Hash 档位（与对弈设置同口径）：从 256 起步循环 */
     private val hashLevels = listOf(256, 512, 1024, 2048)

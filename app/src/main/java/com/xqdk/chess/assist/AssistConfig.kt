@@ -42,7 +42,7 @@ class AssistConfig(context: Context) {
 
     /** 搜索深度（与对弈"固定深度"制式一致，默认 20） */
     var searchDepth: Int
-        get() = sp.getInt(KEY_SEARCH_DEPTH, 12)
+        get() = sp.getInt(KEY_SEARCH_DEPTH, 20)
         set(value) { sp.edit().putInt(KEY_SEARCH_DEPTH, value.coerceIn(6, 40)).apply() }
 
     /** 引擎 Hash（MB，与对弈设置同口径；面板按钮循环 256→512→1024→2048） */
@@ -55,7 +55,7 @@ class AssistConfig(context: Context) {
      * 1 路 = 全部算力集中最佳着（最强）；2-3 路附带给备选候选。默认 3（保留候选展示）。
      */
     var multiPv: Int
-        get() = sp.getInt(KEY_MULTI_PV, 1).coerceIn(1, 3)
+        get() = sp.getInt(KEY_MULTI_PV, 3).coerceIn(1, 3)
         set(value) { sp.edit().putInt(KEY_MULTI_PV, value.coerceIn(1, 3)).apply() }
 
     /** 悬浮窗主题（OverlayTheme.key：深色玻璃/纯黑 OLED/浅色纸感，连线页切换） */
