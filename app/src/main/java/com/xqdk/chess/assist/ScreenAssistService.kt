@@ -161,6 +161,10 @@ class ScreenAssistService : Service() {
     private var frameSig: IntArray? = null
 
     @Volatile private var paused = false
+
+    /** 本次启动识别是否还没执行过“强制我方先走” */
+
+    @Volatile private var forceMyTurnPending = true
     /**
      * 紧急手动模式：识别连续失效/产出幽灵局面时，暂停帧识别，由用户在小棋盘上
      * 点选"起点→终点"录入实战着法（自动翻转走子方）、再点一次已选中子将其删除。
@@ -228,9 +232,8 @@ class ScreenAssistService : Service() {
     /** 引擎强度档位（固定深度，与对弈"固定深度"制式一致） */
     private val strengthLevels = listOf(
         "快速·深度12" to 12,
+        "轻量·深度14" to 14,
         "均衡·深度16" to 16,
-        "标准·深度20" to 20,
-        "强劲·深度24" to 24,
     )
     private var strengthIndex = 0
     /** 引擎 Hash 档位（与对弈设置同口径）：从 256 起步循环 */
@@ -250,7 +253,9 @@ class ScreenAssistService : Service() {
         tracker = BoardTracker(config.confirmCount)
         // 强度档位与持久化设置对齐（设置值不在档位表内时用”标准”）
         val idx = strengthLevels.indexOfFirst { it.second == config.searchDepth }
-        strengthIndex = if (idx >= 0) idx else 1
+        strengthIndex = if (idx >= 0) idx else 2 // 已无 20/24 档：旧存档回落到 16
+        // 旧版本存过 20/24 时把持久化值一并归一化，免得引擎仍按旧深度启动
+        config.searchDepth = strengthLevels[strengthIndex].second
         // Hash 档位与持久化设置对齐（从 256 起步循环）
         val hidx = hashLevels.indexOfFirst { it == config.hashMb }
         hashIndex = if (hidx >= 0) hidx else 0
@@ -329,6 +334,8 @@ class ScreenAssistService : Service() {
         mediaProjection = projectionManager.getMediaProjection(resultCode, data)
         // 记录帧尺寸：悬浮窗遮挡判断把归一化棋盘框换算回像素时需要
         config.frameSize = w to h
+        // 每次启动识别时读取一次：首帧确认后强制“轮到我方走”
+        forceMyTurnPending = config.forceMyTurnOnStart
         val reader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2)
         reader.setOnImageAvailableListener(::onImageAvailable, workerHandler)
         imageReader = reader
@@ -820,6 +827,14 @@ class ScreenAssistService : Service() {
         currentCanonical = confirmed.canonical
         currentPieces = flatten(confirmed.canonical)
         currentOrientation = confirmed.orientation
+        if (forceMyTurnPending) {
+            forceMyTurnPending = false
+            val myRed = mySideIsRed()
+            if (tracker.redGo != myRed) {
+                tracker.redGo = myRed
+                Log.i(TAG, "force my turn on start: redGo=$myRed")
+            }
+        }
         currentFen = AssistBoard.toFen(confirmed.canonical, tracker.redGo)
         resetSuggestionState()
         history.addLast(HistoryEntry(confirmed, tracker.redGo, currentFen))
@@ -863,13 +878,18 @@ class ScreenAssistService : Service() {
             if (fen.isEmpty()) return@post
             val redGo = tracker.redGo
             val myTurn = redGo == mySideIsRed()
-            if (myTurn) {
-                val moves = queryBook(canonical, redGo)
-                if (!moves.isNullOrEmpty()) {
-                    bookMoves = moves
-                    mainHandler.post { postRender() }
-                    return@post
-                }
+            // 对方回合不搜索：省电/省发热，也避免给出“若对方走X”这类没用的预案。
+            // 对方落子后局面确认 → 轮到我方时再启动引擎。
+            if (!myTurn) {
+                bookMoves = null
+                analysisEngine?.cancel()
+                return@post
+            }
+            val moves = queryBook(canonical, redGo)
+            if (!moves.isNullOrEmpty()) {
+                bookMoves = moves
+                mainHandler.post { postRender() }
+                return@post
             }
             bookMoves = null
             if (!engineReady) {
@@ -877,7 +897,7 @@ class ScreenAssistService : Service() {
                 return@post
             }
             analysisEngine?.request(fen)
-            if (myTurn) mainHandler.post { setStatus("引擎思考中…") }
+            mainHandler.post { setStatus("引擎思考中…") }
         }
     }
 
@@ -1446,19 +1466,6 @@ class ScreenAssistService : Service() {
                     candidateTone = QiTone.WARN
                 }
             }
-            !myTurn && line != null && line.pv.size >= 2 -> {
-                // 对方回合：算力产出我方应对，但只给文字预案——对方还没走，把"我方应手"
-                // 画在当前盘面上会指向我方棋子，看起来像"我方打我方"
-                val oppU = line.pv[0]
-                val myU = line.pv[1]
-                if (fromIsOurs(myU)) {
-                    val oppDesc = describeSafe(fen, oppU)
-                    val myDesc = describeSafe(AssistBoard.applyUcci(fen, oppU), myU)
-                    candidateText = "若对方走$oppDesc\n我方应$myDesc"
-                    advantageText = lineScoreText(line)
-                    advantageTone = if (isRedFavored(line)) QiTone.GOOD else QiTone.BAD
-                }
-            }
             myTurn && engineReady && fen.isNotEmpty() -> {
                 candidateText = "引擎思考中…"
                 candidateTone = QiTone.WARN
@@ -1486,7 +1493,7 @@ class ScreenAssistService : Service() {
             manualMode = manualMode,
             selectedCell = manualSelected,
             depthText = strengthLevels[strengthIndex].second.toString(),
-            searchDepthText = if (searchDepth > 0) "深 $searchDepth" else null,
+            searchDepthText = if (searchDepth > 0) "深$searchDepth" else null,
             hashText = hashLevels[hashIndex].toString(),
             engineText = if (engineName == ENGINE_ONNX) "ONNX" else "YOLO",
             multiPv = multiPv,

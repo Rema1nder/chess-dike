@@ -312,6 +312,14 @@ class AnalysisEngine(
         synchronized(lock) { lock.notifyAll() }
     }
 
+    /** 取消当前搜索（对方回合/暂停时调用）：清掉待搜局面并让引擎立刻停手 */
+    fun cancel() {
+        pendingFen = null
+        val eng = engine
+        if (eng != null && ready) eng.writeLineToEngine("stop")
+        synchronized(lock) { lock.notifyAll() }
+    }
+
     fun shutdown() {
         shuttingDown = true
         ready = false

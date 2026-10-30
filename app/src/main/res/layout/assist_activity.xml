@@ -107,6 +107,16 @@
                 android:textSize="14sp" />
         </RadioGroup>
 
+        <CheckBox
+            android:id="@+id/cb_force_my_turn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:buttonTint="@color/qi_zhu"
+            android:text="⑥ 识别开始时强制轮到我方走子"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
