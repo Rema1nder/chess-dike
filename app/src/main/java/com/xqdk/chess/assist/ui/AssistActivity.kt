@@ -15,7 +15,6 @@ import android.os.IBinder
 import android.provider.Settings
 import android.view.View
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
@@ -39,7 +38,6 @@ class AssistActivity : AppCompatActivity() {
     private lateinit var btnNotify: Button
     private lateinit var btnStartCapture: Button
     private lateinit var btnOverlayTheme: Button
-    private lateinit var cbForceMyTurn: CheckBox
     private lateinit var tvStatus: TextView
 
     /** 悬浮窗主题循环切换顺序（深色玻璃 → 纯黑 OLED → 浅色纸感） */
@@ -104,12 +102,6 @@ class AssistActivity : AppCompatActivity() {
         btnOverlayTheme.text = "④ 悬浮窗主题：" + OverlayTheme.fromKey(
             com.xqdk.chess.assist.AssistConfig(this).overlayTheme
         ).label
-        cbForceMyTurn = findViewById(R.id.cb_force_my_turn)
-        cbForceMyTurn.isChecked = com.xqdk.chess.assist.AssistConfig(this).forceMyTurnOnStart
-        cbForceMyTurn.setOnCheckedChangeListener { _, checked ->
-            com.xqdk.chess.assist.AssistConfig(this).forceMyTurnOnStart = checked
-        }
-
         btnOverlayTheme.setOnClickListener {
             // 循环切换：持久化 + 已建面板即时换肤（未启动时下次启动生效）
             val cur = OverlayTheme.fromKey(
