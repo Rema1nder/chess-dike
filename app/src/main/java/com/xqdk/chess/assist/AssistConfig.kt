@@ -63,11 +63,6 @@ class AssistConfig(context: Context) {
         get() = sp.getString(KEY_OVERLAY_THEME, null) ?: OverlayTheme.DARK.key
         set(value) { sp.edit().putString(KEY_OVERLAY_THEME, value).apply() }
 
-    /** 识别开始时强制轮到我方走子（中途接管/轮次误判时用，只在每次启动识别时生效一次） */
-    var forceMyTurnOnStart: Boolean
-        get() = sp.getBoolean(KEY_FORCE_MY_TURN, false)
-        set(value) { sp.edit().putBoolean(KEY_FORCE_MY_TURN, value).apply() }
-
     companion object {
         private const val KEY_RECOGNIZER_ENGINE = "recognizer_engine"
         private const val KEY_FRAME_W = "frame_w"
@@ -76,7 +71,6 @@ class AssistConfig(context: Context) {
         private const val KEY_OVERLAY_X = "overlay_x"
         private const val KEY_OVERLAY_Y = "overlay_y"
         private const val KEY_SEARCH_DEPTH = "search_depth"
-        private const val KEY_FORCE_MY_TURN = "force_my_turn"
         private const val KEY_HASH_MB = "hash_mb"
         private const val KEY_MULTI_PV = "multi_pv"
         private const val KEY_OVERLAY_THEME = "overlay_theme"
