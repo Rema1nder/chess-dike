@@ -158,7 +158,7 @@
     <LinearLayout
         android:id="@+id/overlay_col_right"
         android:layout_width="90dp"
-        android:layout_height="wrap_content"
+        android:layout_height="185dp"
         android:layout_marginStart="2dp"
         android:orientation="vertical"
         android:paddingHorizontal="2dp">
@@ -205,5 +205,19 @@
             android:layout_height="23dp"
             android:layout_marginTop="2dp"
             android:text="关闭" />
+
+        <!-- 实际搜索深度：右下角小字（由服务端 render 填入） -->
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/overlay_search_depth"
+            style="@style/OverlayState"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:text="深 —" />
     </LinearLayout>
 </LinearLayout>

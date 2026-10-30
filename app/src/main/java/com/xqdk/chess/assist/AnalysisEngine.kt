@@ -221,14 +221,14 @@ class AnalysisEngine(
                 parseInfo(tokens)?.let { ml ->
                     lines[ml.multiPv] = ml
                     val res = AnalysisResult(fen, redGo, null, lines.values.sortedBy { it.multiPv }.map {
-                        it.toAnalysisLine()
+                        it.toAnalysisLine(redGo)
                     })
                     listener.onSearchUpdate(res)
                 }
             } else if (tokens[0] == "bestmove") {
                 val bm = if (tokens.size > 1) tokens[1] else null
                 val res = AnalysisResult(fen, redGo, bm,
-                    lines.values.sortedBy { it.multiPv }.map { it.toAnalysisLine() })
+                    lines.values.sortedBy { it.multiPv }.map { it.toAnalysisLine(redGo) })
                 listener.onSearchDone(res)
                 return
             }
@@ -243,12 +243,12 @@ class AnalysisEngine(
             if (tokens[0] == "bestmove") {
                 val bm = if (tokens.size > 1) tokens[1] else null
                 listener.onSearchDone(AnalysisResult(fen, redGo, bm,
-                    lines.values.sortedBy { it.multiPv }.map { it.toAnalysisLine() }))
+                    lines.values.sortedBy { it.multiPv }.map { it.toAnalysisLine(redGo) }))
                 return
             }
         }
         listener.onSearchDone(AnalysisResult(fen, redGo, null,
-            lines.values.sortedBy { it.multiPv }.map { it.toAnalysisLine() }))
+            lines.values.sortedBy { it.multiPv }.map { it.toAnalysisLine(redGo) }))
     }
 
     private class MutableAnalysisLine(val multiPv: Int) {
@@ -256,7 +256,13 @@ class AnalysisEngine(
         var scoreCp = 0
         var mateIn: Int? = null
         var pv: List<String> = emptyList()
-        fun toAnalysisLine(): AnalysisLine = AnalysisLine(multiPv, depth, scoreCp, mateIn, pv)
+        fun toAnalysisLine(redGo: Boolean): AnalysisLine {
+            // pikafish 的 score 以“当前走子方”视角给出；统一换算成红方视角（正=红优）。
+            // 之前直接把原始分当红方分，导致黑方走棋时优势方向整体反掉。
+            val redCp = if (redGo) scoreCp else -scoreCp
+            val redMate = if (redGo) mateIn else mateIn?.let { -it }
+            return AnalysisLine(multiPv, depth, redCp, redMate, pv)
+        }
     }
 
     private fun parseInfo(tokens: List<String>): MutableAnalysisLine? {

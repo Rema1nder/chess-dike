@@ -62,6 +62,8 @@ class OverlayModel(
     val selectedCell: Pair<Int, Int>? = null,
     /** 引擎深度档值（"20"）；null = 显示弱化占位 */
     val depthText: String? = null,
+    /** 实际搜索深度（"深 21"）：右下角小字；null = 隐藏 */
+    val searchDepthText: String? = null,
     /** 引擎 Hash 档值（"256"） */
     val hashText: String? = null,
     /** 识别引擎档值（"ONNX"/"YOLO"）；null = 显示弱化占位 */
@@ -104,6 +106,7 @@ class OverlayPanelView @JvmOverloads constructor(
     private val occluded: TextView
     private val status: TextView
     private val advantage: TextView
+    private val searchDepth: TextView
     private val divider: View
     private val candidate: TextView
     private val btnPause: TextView
@@ -186,6 +189,7 @@ class OverlayPanelView @JvmOverloads constructor(
         occluded = findViewById(R.id.overlay_occluded)
         status = findViewById(R.id.overlay_status)
         advantage = findViewById(R.id.overlay_advantage)
+        searchDepth = findViewById(R.id.overlay_search_depth)
         divider = findViewById(R.id.overlay_divider)
         candidate = findViewById(R.id.overlay_candidate)
         btnPause = findViewById(R.id.overlay_btn_pause)
@@ -263,6 +267,16 @@ class OverlayPanelView @JvmOverloads constructor(
             advantage.visibility = View.VISIBLE
             advantage.text = adv
             advantage.setTextColor(toneColor(model.advantageTone, palette.jade))
+        }
+
+        // 实际搜索深度（右下角小字）
+        val sd = model.searchDepthText
+        if (sd.isNullOrEmpty()) {
+            searchDepth.visibility = View.GONE
+        } else {
+            searchDepth.visibility = View.VISIBLE
+            searchDepth.text = sd
+            searchDepth.setTextColor(palette.muted)
         }
 
         // 候选/预案行（点阵折进尾部：当前候选=琥珀实点，其余=次级点——
@@ -346,6 +360,7 @@ class OverlayPanelView @JvmOverloads constructor(
         status.setTextColor(palette.headline)
         candidate.setTextColor(palette.fg)
         advantage.setTextColor(palette.jade) // render 会按语义覆盖
+        searchDepth.setTextColor(palette.muted)
         divider.setBackgroundColor(palette.divider)
 
         // 值芯片（每个 view 各取一份 Drawable 实例，禁止共享）

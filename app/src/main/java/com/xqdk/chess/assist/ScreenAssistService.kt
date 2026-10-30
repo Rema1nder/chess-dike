@@ -1368,6 +1368,9 @@ class ScreenAssistService : Service() {
         val lines = a?.lines ?: emptyList()
         val line = if (lines.isNotEmpty()) lines[selectedCandidate.coerceIn(0, lines.size - 1)] else null
 
+        // 实际搜索深度（各变招最大值）：右下角单独显示，不再拼进优势行
+        val searchDepth = a?.lines?.maxOfOrNull { it.depth } ?: 0
+
         // 识别中断/持续不稳定时，旧建议所依据的局面可能已失效——不再展示，避免误导
         // （手动模式局面由用户维护，不受识别健康度影响）
         val recHealthy = manualMode || (recMissStreak == 0 && tracker.unstableStreak < 5)
@@ -1434,8 +1437,8 @@ class ScreenAssistService : Service() {
                     arrowTo = arrow.second
                     candidateText = (if (selectedCandidate > 0) "备选${selectedCandidate + 1} $chs" else "建议 $chs") +
                         if (suggestMature) " ✓" else "（暂定）"
-                    advantageText = "${lineScoreText(line)} 深${line.depth}"
-                    advantageTone = if (line.redScoreCp >= 0) QiTone.GOOD else QiTone.BAD
+                    advantageText = lineScoreText(line)
+                    advantageTone = if (isRedFavored(line)) QiTone.GOOD else QiTone.BAD
                     candidateIndex = selectedCandidate + 1
                     candidateCount = lines.size
                 } else if (ucci != null) {
@@ -1452,8 +1455,8 @@ class ScreenAssistService : Service() {
                     val oppDesc = describeSafe(fen, oppU)
                     val myDesc = describeSafe(AssistBoard.applyUcci(fen, oppU), myU)
                     candidateText = "若对方走$oppDesc\n我方应$myDesc"
-                    advantageText = "${lineScoreText(line)} 深${line.depth}"
-                    advantageTone = if (line.redScoreCp >= 0) QiTone.GOOD else QiTone.BAD
+                    advantageText = lineScoreText(line)
+                    advantageTone = if (isRedFavored(line)) QiTone.GOOD else QiTone.BAD
                 }
             }
             myTurn && engineReady && fen.isNotEmpty() -> {
@@ -1483,15 +1486,31 @@ class ScreenAssistService : Service() {
             manualMode = manualMode,
             selectedCell = manualSelected,
             depthText = strengthLevels[strengthIndex].second.toString(),
+            searchDepthText = if (searchDepth > 0) "深 $searchDepth" else null,
             hashText = hashLevels[hashIndex].toString(),
             engineText = if (engineName == ENGINE_ONNX) "ONNX" else "YOLO",
             multiPv = multiPv,
         ))
     }
 
+    /** 红方视角下是否红方占优（杀棋按杀棋方向，不能只看 cp=0） */
+    private fun isRedFavored(line: AnalysisLine): Boolean =
+        line.mateIn?.let { it > 0 } ?: (line.redScoreCp >= 0)
+
+    /**
+     * 优势文案（固定红方视角，换边不翻向）：
+     * - 普通局面：红方优势 +8.7兵 / 黑方优势 +8.7兵 / 均势（unit=0.01 兵）
+     * - 杀棋：红方 12步杀 / 黑方 12步杀（M12）
+     */
     private fun lineScoreText(line: AnalysisLine): String {
-        val adv = line.scoreText()
-        return if (line.redScoreCp >= 0) "红方优势 $adv" else "红方劣势 $adv"
+        val m = line.mateIn
+        if (m != null) {
+            return if (m > 0) "红方 ${m}步杀" else "黑方 ${-m}步杀"
+        }
+        val cp = line.redScoreCp
+        if (kotlin.math.abs(cp) < 10) return "均势"
+        val v = kotlin.math.abs(cp) / 100.0
+        return if (cp >= 0) "红方优势 +%.1f兵".format(v) else "黑方优势 +%.1f兵".format(v)
     }
 
     /** ucci(4字符) -> 内部 (x,y) 起止 */
