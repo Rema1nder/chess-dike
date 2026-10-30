@@ -161,10 +161,6 @@ class ScreenAssistService : Service() {
     private var frameSig: IntArray? = null
 
     @Volatile private var paused = false
-
-    /** 本次启动识别是否还没执行过“强制我方先走” */
-
-    @Volatile private var forceMyTurnPending = true
     /**
      * 紧急手动模式：识别连续失效/产出幽灵局面时，暂停帧识别，由用户在小棋盘上
      * 点选"起点→终点"录入实战着法（自动翻转走子方）、再点一次已选中子将其删除。
@@ -334,8 +330,6 @@ class ScreenAssistService : Service() {
         mediaProjection = projectionManager.getMediaProjection(resultCode, data)
         // 记录帧尺寸：悬浮窗遮挡判断把归一化棋盘框换算回像素时需要
         config.frameSize = w to h
-        // 每次启动识别时读取一次：首帧确认后强制“轮到我方走”
-        forceMyTurnPending = config.forceMyTurnOnStart
         val reader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2)
         reader.setOnImageAvailableListener(::onImageAvailable, workerHandler)
         imageReader = reader
@@ -827,14 +821,6 @@ class ScreenAssistService : Service() {
         currentCanonical = confirmed.canonical
         currentPieces = flatten(confirmed.canonical)
         currentOrientation = confirmed.orientation
-        if (forceMyTurnPending) {
-            forceMyTurnPending = false
-            val myRed = mySideIsRed()
-            if (tracker.redGo != myRed) {
-                tracker.redGo = myRed
-                Log.i(TAG, "force my turn on start: redGo=$myRed")
-            }
-        }
         currentFen = AssistBoard.toFen(confirmed.canonical, tracker.redGo)
         resetSuggestionState()
         history.addLast(HistoryEntry(confirmed, tracker.redGo, currentFen))
@@ -1013,7 +999,7 @@ class ScreenAssistService : Service() {
         }
         panel.onAction = { action ->
             // 线程收敛（识别管线互不干扰）：除 CLOSE 外全部动作 post 到 worker 执行。
-            // UNDO/FLIP_TURN/MANUAL 会写 tracker/currentFen/history 等识别状态，这些
+            // FORCE_MY_TURN/FLIP_TURN/MANUAL 会写 tracker/currentFen 等识别状态，这些
             // 状态的生产者（handleFrame → tracker.onFrame）都在 worker 线程——UI 线程
             // 直接写与帧循环存在数据竞争；post 后与识别任务同队列串行化。
             // CLOSE 需 removeView（必须 UI 线程），保持主线程执行
@@ -1110,7 +1096,7 @@ class ScreenAssistService : Service() {
                     postRender()
                 }
             }
-            OverlayAction.UNDO -> undoOneStep()
+            OverlayAction.FORCE_MY_TURN -> forceMyTurnNow()
             OverlayAction.MANUAL -> toggleManualMode()
             OverlayAction.FLIP_TURN -> {
                 // 更新棋局（原"轮次"）：识别差分偶发失败会让 redGo 卡在旧值（显示"轮到对方走"
@@ -1142,6 +1128,27 @@ class ScreenAssistService : Service() {
      * 悔棋：回退到上一个已确认局面并重新分析（上一手之前的建议）。
      * 纯本地状态回退，不操作游戏 App；回退后暂停实时同步，点『继续』恢复。
      */
+    /** 悬浮窗“我先走”：把行棋方强制设为我方（纠正轮次识别错，不是翻转） */
+    private fun forceMyTurnNow() {
+        val myRed = mySideIsRed()
+        val canonical = currentCanonical
+        if (canonical == null) {
+            setStatus("还没有识别到棋盘")
+            return
+        }
+        if (tracker.redGo == myRed) {
+            setStatus("当前已经是轮到我方走")
+            scheduleAnalysis()
+            return
+        }
+        tracker.redGo = myRed
+        currentFen = AssistBoard.toFen(canonical, myRed)
+        resetSuggestionState()
+        postRender()
+        scheduleAnalysis()
+        setStatus("已切换：轮到我方走")
+    }
+
     private fun undoOneStep() {
         if (history.size <= 1) {
             setStatus("没有可悔的局面（会随对弈自动积累）")
