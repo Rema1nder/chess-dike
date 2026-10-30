@@ -79,8 +79,8 @@ enum class OverlayAction {
     CLOSE,
     /** 切换候选着法（变招） */
     CYCLE_CANDIDATE,
-    /** 悔棋：回退到上一个已确认局面 */
-    UNDO,
+    /** 强制轮到我方走（纠正轮次识别错误，非翻转） */
+    FORCE_MY_TURN,
     /** 引擎深度档切换（固定深度循环） */
     CYCLE_STRENGTH,
     /** 引擎 Hash 档循环（256→512→1024→2048，与对弈设置同口径） */
@@ -116,7 +116,7 @@ class OverlayPanelView @JvmOverloads constructor(
     private val btnEngine: TextView
     private val btnChange: TextView
     private val btnMultiPv: TextView
-    private val btnUndo: TextView
+    private val btnForce: TextView
     private val btnManual: TextView
     private val btnTurn: TextView
 
@@ -199,14 +199,14 @@ class OverlayPanelView @JvmOverloads constructor(
         btnEngine = findViewById(R.id.overlay_btn_engine)
         btnChange = findViewById(R.id.overlay_btn_change)
         btnMultiPv = findViewById(R.id.overlay_btn_multipv)
-        btnUndo = findViewById(R.id.overlay_btn_undo)
+        btnForce = findViewById(R.id.overlay_btn_force)
         btnManual = findViewById(R.id.overlay_btn_manual)
         btnTurn = findViewById(R.id.overlay_btn_turn)
         closeNormalColor = btnClose.currentTextColor
 
         btnPause.setOnClickListener { onAction?.invoke(OverlayAction.PAUSE) }
         btnChange.setOnClickListener { onAction?.invoke(OverlayAction.CYCLE_CANDIDATE) }
-        btnUndo.setOnClickListener { onAction?.invoke(OverlayAction.UNDO) }
+        btnForce.setOnClickListener { onAction?.invoke(OverlayAction.FORCE_MY_TURN) }
         btnManual.setOnClickListener { onAction?.invoke(OverlayAction.MANUAL) }
         btnTurn.setOnClickListener { onAction?.invoke(OverlayAction.FLIP_TURN) }
         btnStrength.setOnClickListener { onAction?.invoke(OverlayAction.CYCLE_STRENGTH) }
@@ -370,7 +370,7 @@ class OverlayPanelView @JvmOverloads constructor(
 
         // 动作按钮：停止 = 琥珀警示描边（唯一带语义描边的动作）
         btnPause.background = theme.actionBackground(context, palette.stopStroke, palette.stopStrokePressed)
-        for (v in listOf(btnChange, btnMultiPv, btnUndo, btnManual, btnTurn, btnClose)) {
+        for (v in listOf(btnChange, btnMultiPv, btnForce, btnManual, btnTurn, btnClose)) {
             v.background = theme.actionBackground(context)
             v.setTextColor(palette.fg)
         }
